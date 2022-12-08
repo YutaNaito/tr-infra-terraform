@@ -1,57 +1,113 @@
-resource "aws_vpc" "main" {
-	cidr_block = "10.0.0.0/16"
+# ------------------------------------------------------------
+# VPC
+# ------------------------------------------------------------
+
+resource "aws_vpc" "management_vpc" {
+	cidr_block = "186.15.0.0/16"
+	enable_dns_hostnames = true
+	enable_dns_support = true
+	
+	tags = {
+	  Name = "management-vpc"
+	  Description = "For management"
+	}
+}
+
+resource "aws_vpc" "app_vpc" {
+	cidr_block = "72.107.0.0/16"
 	enable_dns_hostnames = true
 	enable_dns_support = true
 
 	tags = {
-	  "name" = "main"
+	  Name = "app-vpc"
+	  Description = "For remote controll management system"
 	}
 }
 
-resource "aws_subnet" "public-subnet-a" {
-	vpc_id = aws_vpc.main.id
-	cidr_block = "10.0.1.0/24"
+
+# ------------------------------------------------------------
+# Subnet
+# ------------------------------------------------------------
+
+resource "aws_subnet" "management_public_subnet" {
+	vpc_id = aws_vpc.management_vpc.id
+	cidr_block = "186.15.10.0/24"
 	map_public_ip_on_launch = true
 	availability_zone = "ap-northeast-1a"
 }
 
-resource "aws_subnet" "public-subnet-b" {
-	vpc_id = aws_vpc.main.id
-	cidr_block = "10.0.3.0/24"
+resource "aws_subnet" "app-public-subnet-a" {
+	vpc_id = aws_vpc.app_vpc.id
+	cidr_block = "72.107.1.0/24"
 	map_public_ip_on_launch = true
 	availability_zone = "ap-northeast-1a"
 }
 
-resource "aws_subnet" "private-subnet-c" {
-	vpc_id = aws_vpc.main.id
-	cidr_block = "10.0.2.0/24"
+resource "aws_subnet" "app-public-subnet-b" {
+	vpc_id = aws_vpc.app_vpc.id
+	cidr_block = "72.107.3.0/24"
+	map_public_ip_on_launch = true
+	availability_zone = "ap-northeast-1b"
+}
+
+resource "aws_subnet" "app-private-subnet-c" {
+	vpc_id = aws_vpc.main_vpc.id
+	cidr_block = "72.107.2.0/24"
 	map_public_ip_on_launch = false
-	availability_zone = "ap-northeast-1a"
+	availability_zone = "ap-northeast-1c"
 }
 
-resource "aws_subnet" "private-subnet-d" {
-	vpc_id = aws_vpc.main.id
-	cidr_block = "10.0.4.0/24"
+resource "aws_subnet" "app-private-subnet-d" {
+	vpc_id = aws_vpc.main_vpc.id
+	cidr_block = "72.107.4.0/24"
 	map_public_ip_on_launch = false
-	availability_zone = "ap-northeast-1a"
+	availability_zone = "ap-northeast-1d"
 }
 
-resource "aws_internet_gateway" "main-ig" {
-	vpc_id = aws_vpc.main.id
+
+# ------------------------------------------------------------
+# Internet gateway
+# ------------------------------------------------------------
+
+resource "aws_internet_gateway" "management_ig" {
+	vpc_id = aws_vpc.management-vpc.id
 }
 
-resource "aws_route_table" "main-rt" {
-  vpc_id = aws_vpc.main.id
+resource "aws_internet_gateway" "app_ig" {
+	vpc_id = aws_vpc.app_vpc.id  
 }
 
-resource "aws_route" "main-r" {
-  route_table_id = aws_route_table.main-rt.id
-  gateway_id = aws_internet_gateway.main-ig.id
+
+# ------------------------------------------------------------
+# Route table
+# ------------------------------------------------------------
+
+resource "aws_route_table" "management_route_table" {
+  vpc_id = aws_vpc.management_vpc.id
+}
+
+resource "aws_route" "management_route" {
+  route_table_id = aws_route_table.management_route_table.id
+  gateway_id = aws_internet_gateway.management_ig.id
   destination_cidr_block = "0.0.0.0/0"
 }
 
-resource "aws_route_table_association" "main-rt-a" {
-  subnet_id = aws_subnet.public-subnet-a.id
-  route_table_id = aws_route_table.main-rt.id
+resource "aws_route_table_association" "management_route_table_association" {
+  subnet_id = aws_subnet.management_public_subnet.id
+  route_table_id = aws_route_table.management_route_table.id
+}
 
+resource "aws_route_table" "app_public_route_table" {
+  vpc_id = aws_vpc.app_vpc.id
+}
+
+resource "aws_route" "app_public_route" {
+  route_table_id = aws_route_table.app_public_route_table.id
+  gateway_id = aws_internet_gateway.app_ig.id
+  destination_cidr_block = "0.0.0.0/0"
+}
+
+resource "aws_route_table_association" "app_route_table_association" {
+  subnet_id = aws_subnet.app-public-subnet-a
+  route_table_id = aws_route_table.app_public_route_table
 }
